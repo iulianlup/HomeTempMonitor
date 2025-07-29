@@ -41,7 +41,8 @@ const int spiSpeed = 4000000;
 #define DATA_DIRECTORY "MEAS" // limit is 8 characters
 #define RECORD_FILE_EXT ".CSV"
 File sensorData;
-
+int firstMeasurement = 0; // variable used define first measurements taken at each startup
+int fileSize = 0; // determines if file header already created;  > 0 if created
 
 void setup() {
   // put your setup code here, to run once:
@@ -65,11 +66,33 @@ if(SD.begin()){
   Serial.println("No SD card!");
 }
 
-SD.mkdir(DATA_DIRECTORY);
-sensorData = SD.open("data.csv",FILE_WRITE);
-sensorData.write("New meas set");
-sensorData.close();
 
+// SD setup code
+
+sensorData = SD.open("data.csv",FILE_READ);
+
+if(sensorData.size()==0){
+  fileSize = 0;
+  sensorData.close();
+} else{
+  fileSize = 1;
+  sensorData.close();
+}
+
+if(fileSize==0){
+  sensorData = SD.open("data.csv",FILE_WRITE);
+  sensorData.println("First measurements");
+  sensorData.println(",");
+  sensorData.print("Time [ms]");
+  sensorData.print(",");
+  sensorData.print("Temp [C]");
+  sensorData.print(",");
+  sensorData.print("Humidity [%]");
+  sensorData.println(",");
+  sensorData.close();
+} else {
+  Serial.println("File already initialised...");
+}
 
 
 // lcd
@@ -85,9 +108,9 @@ attachInterrupt(digitalPinToInterrupt(wakeUp),wakeLCD,FALLING);
 void loop() {
   // put your main code here, to run repeatedly:
 
-temp = dht22.getTemperature() - errorTemp;
-humidity = dht22.getHumidity() - errorHumidity;
-delay(2000);
+getTempAndHum();
+
+initialMeasurement();
 
  if(lcdState == true && millis() - onTime > 10000 ){
   lcd.setBacklight(0);
@@ -95,6 +118,65 @@ delay(2000);
 }
 
 if(humidity == 0 || temp == -278 || temp == -5){ // one of the states DHT22 function reads if no communication with DHT sensor
+
+  dhtError();
+
+}
+
+
+lcd.clear();
+lcd.print("Temp:");
+lcd.print(temp);
+lcd.print(" deg");
+lcd.setCursor(0,1);
+lcd.print("Humidity:");
+lcd.print(humidity);
+lcd.print(" %");
+
+
+// Serial.print("Good Temperature: ");
+// Serial.println(temp);
+
+// Serial.print("Good Humidity: ");
+// Serial.println(humidity);
+
+
+}
+
+// LCD backlight wakeup when button pressed
+
+void wakeLCD (){
+
+  if(lcdState == false){
+    lcdState = true;
+    lcd.setBacklight(1);
+    onTime = millis();
+  }
+}
+
+// Sends first measurements at startup
+
+void initialMeasurement (){
+
+if(firstMeasurement==0){
+
+  sensorData = SD.open("data.csv",FILE_WRITE);
+  sensorData.print(millis());
+  sensorData.print(",");
+  sensorData.print(temp);
+  sensorData.print(",");
+  sensorData.print(humidity);
+  sensorData.println(",");
+  sensorData.close();
+
+  firstMeasurement++;
+}
+}
+
+// Error trigger if DHT is disconnected or does not send valid data
+
+void dhtError(){
+
  Serial.println("Error entered");
  errorCounter = errorCounter + 1; 
 
@@ -138,31 +220,12 @@ if(humidity == 0 || temp == -278 || temp == -5){ // one of the states DHT22 func
 
 }
 
+// Read sensor data from DHT22
 
-lcd.clear();
-lcd.print("Temp:");
-lcd.print(temp);
-lcd.print(" deg");
-lcd.setCursor(0,1);
-lcd.print("Humidity:");
-lcd.print(humidity);
-lcd.print(" %");
+void getTempAndHum(){
 
+temp = dht22.getTemperature() - errorTemp;
+humidity = dht22.getHumidity() - errorHumidity;
+delay(2000);
 
-// Serial.print("Good Temperature: ");
-// Serial.println(temp);
-
-// Serial.print("Good Humidity: ");
-// Serial.println(humidity);
-
-
-}
-
-void wakeLCD (){
-
-  if(lcdState == false){
-    lcdState = true;
-    lcd.setBacklight(1);
-    onTime = millis();
-  }
 }
