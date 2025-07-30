@@ -79,7 +79,7 @@ if(sensorData.size()==0){
   sensorData.close();
 }
 
-if(fileSize==0){
+if(fileSize==0){ // Check if header is initialized in SD card
   sensorData = SD.open("data.csv",FILE_WRITE);
   sensorData.println("First measurements");
   sensorData.println(",");
@@ -112,17 +112,12 @@ getTempAndHum();
 
 initialMeasurement();
 
- if(lcdState == true && millis() - onTime > 10000 ){
-  lcd.setBacklight(0);
-  lcdState = false;
-}
+lcdbackLightReset();
 
-if(humidity == 0 || temp == -278 || temp == -5){ // one of the states DHT22 function reads if no communication with DHT sensor
+dhtError();
 
-  dhtError();
 
-}
-
+// Provisional refresh for temp and humidity display
 
 lcd.clear();
 lcd.print("Temp:");
@@ -177,6 +172,7 @@ if(firstMeasurement==0){
 
 void dhtError(){
 
+if(humidity == 0 || temp == -278 || temp == -5){ // one of the states DHT22 function reads if no communication with DHT sensor
  Serial.println("Error entered");
  errorCounter = errorCounter + 1; 
 
@@ -211,13 +207,14 @@ void dhtError(){
     lcd.print(")");
 
       // read again sensor data, obviously
-      delay(2000); 
+    delay(2000); 
     temp = dht22.getTemperature() - errorTemp; 
     humidity = dht22.getHumidity() - errorHumidity;
     Serial.println(temp);
 
   }
 
+}
 }
 
 // Read sensor data from DHT22
@@ -229,3 +226,16 @@ humidity = dht22.getHumidity() - errorHumidity;
 delay(2000);
 
 }
+
+// LCD backlight reset
+
+void lcdbackLightReset(){
+
+ if(lcdState == true && millis() - onTime > 10000 ){
+  lcd.setBacklight(0);
+  lcdState = false;
+
+}
+}
+
+// SD card data.csv file header initialisation
