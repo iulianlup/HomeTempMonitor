@@ -43,6 +43,8 @@ const int spiSpeed = 4000000;
 File sensorData;
 int firstMeasurement = 0; // variable used define first measurements taken at each startup
 int fileSize = 0; // determines if file header already created;  > 0 if created
+int refreshTime = 0; // variable to count how much time until last update on sensor values was written on the SD card
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -98,6 +100,7 @@ if(fileSize==0){ // Check if header is initialized in SD card
 // lcd
 lcd.begin(rows,cols);
 lcd.setBacklight(0);
+// lcd.setContrast(1); // values 0-255 (does not work as LCD has potentiometer on the back)
 
 // interrupt 
 pinMode(wakeUp,INPUT_PULLUP);
@@ -111,6 +114,8 @@ void loop() {
 getTempAndHum();
 
 initialMeasurement();
+
+datalogRefresh();
 
 lcdbackLightReset();
 
@@ -161,6 +166,8 @@ if(firstMeasurement==0){
   sensorData.print(temp);
   sensorData.print(",");
   sensorData.print(humidity);
+  sensorData.print(",");
+  sensorData.print("Startup measurements");
   sensorData.println(",");
   sensorData.close();
 
@@ -238,4 +245,24 @@ void lcdbackLightReset(){
 }
 }
 
-// SD card data.csv file header initialisation
+// Rewrite sensor values to SD card
+
+void datalogRefresh(){
+
+if(millis() - refreshTime > 30000){
+
+  sensorData = SD.open("data.csv",FILE_WRITE);
+  sensorData.print(millis());
+  sensorData.print(",");
+  sensorData.print(temp);
+  sensorData.print(",");
+  sensorData.print(humidity);
+  sensorData.println(",");
+  sensorData.close();
+
+  refreshTime = millis();
+}
+
+}
+
+
